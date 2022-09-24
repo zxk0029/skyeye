@@ -126,11 +126,11 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
         ).order_by("-id")
         for stable_coin_price in stable_coin_prices:
             item = market_pb2.StableCoin(
-                id=sprice.id,
-                name=sprice.symbol.name,
-                usd_price=sprice.usd_price,
-                cny_price=sprice.cny_price,
-                margin=sprice.margin,
+                id=stable_coin_price.id,
+                name=stable_coin_price.symbol.name,
+                usd_price=stable_coin_price.usd_price,
+                cny_price=stable_coin_price.cny_price,
+                margin=stable_coin_price.margin,
             )
             stablecoin_price_list.append(item)
         return market_pb2.StableCoinPriceResponse(
