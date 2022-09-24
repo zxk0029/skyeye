@@ -1,12 +1,17 @@
 from django.db import models
 from common.model_fields import DecField
-from exchange.models import Symbol, Asset
+from exchange.models import Symbol, Asset, Exchange
 from common.models import BaseModel
 
 
 class MgObPersistence(BaseModel):
     symbol = models.ForeignKey(
         Symbol, related_name='price_symbol',
+        null=True, blank=True,
+        on_delete=models.CASCADE
+    )
+    exchange = models.ForeignKey(
+        Exchange, related_name='price_exchange',
         null=True, blank=True,
         on_delete=models.CASCADE
     )
