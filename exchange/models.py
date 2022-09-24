@@ -43,6 +43,7 @@ class CacheManager(models.Manager):
 
 
 class Asset(BaseModel):
+    IsStableCoin = [(x, x) for x in ['Yes', 'No']]
     name = models.CharField(
         max_length=100,
         unique=True,
@@ -52,6 +53,12 @@ class Asset(BaseModel):
     unit = models.SmallIntegerField(
         default=8,
         verbose_name='资产精度'
+    )
+    is_stable = models.CharField(
+        max_length=100,
+        choices=IsStableCoin,
+        default='No',
+        verbose_name='是否为稳定币'
     )
     status = models.CharField(
         max_length=100,
