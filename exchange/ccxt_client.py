@@ -88,9 +88,6 @@ def get_async_client(exchange_name: str) -> Optional[ASYNCCCXTExchange]:
     exchange_class = getattr(async_ccxt, exchange_name)
     exchange_client = exchange_class()
     select_proxy(exchange_client)
-    print("exchange_clientexchange_clientexchange_clientexchange_clientexchange_client")
-    print(exchange_client)
-    print("exchange_clientexchange_clientexchange_clientexchange_clientexchange_client")
     return exchange_client
 
 
