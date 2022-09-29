@@ -33,4 +33,4 @@ class SymbolAdmin(admin.ModelAdmin):
 
 @admin.register(ExchangeSymbolShip)
 class ExchangeSymbolShipAdmin(admin.ModelAdmin):
-    list_display = ('id', 'created_at')
+    list_display = ('id', 'symbol', 'exchange', 'created_at')
