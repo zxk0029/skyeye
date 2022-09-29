@@ -166,7 +166,7 @@ MERGE_SYMBOL_CONFIG = {
 
 FETCHABLE_EXCHANGES = ["bitmex", "huobipro", "binance", "okex"]
 CRAWLER_SLEEP_CONFIG = {}
-C_PROXIES = []
+C_PROXIES = ["127.0.0.1:41091"]
 GRPC_MAX_MESSAGE_LENGTH = 2048
 
 try:
