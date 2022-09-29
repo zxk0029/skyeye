@@ -57,7 +57,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'skyeye',
         'USER': 'root',
-        'PASSWORD': 'skyeye!',
+        'PASSWORD': 'Wenwo2020!',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
@@ -166,7 +166,7 @@ MERGE_SYMBOL_CONFIG = {
 
 FETCHABLE_EXCHANGES = ["bitmex", "huobipro", "binance", "okex"]
 CRAWLER_SLEEP_CONFIG = {}
-C_PROXIES = ["127.0.0.1:1087"]
+C_PROXIES = []
 GRPC_MAX_MESSAGE_LENGTH = 2048
 
 try:
