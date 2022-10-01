@@ -1,7 +1,7 @@
 #encoding=utf-8
 
 import pytz
-from backoffice.models import MgObPersistence, Symbol, Asset
+from backoffice.models import MgObPersistence, Symbol, Asset, OtcAssetPrice
 from sevices.savourrpc import market_pb2_grpc, common_pb2, market_pb2
 from django.conf import settings
 from exchange.models import Exchange, ExchangeSymbolShip
@@ -68,20 +68,16 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
         symbol_id = int(request.symbol_id)
         symbol_price_data: List[market_pb2.SymbolPrice] = []
         if exchange_id == 0 and symbol_id == 0:
-            symbol_price_list = MgObPersistence.objects.filter(
-                status='Active'
-            ).order_by("-id")
+            symbol_price_list = MgObPersistence.objects.all().order_by("-id")
         elif exchange_id != 0 and symbol_id == 0:
             exchange = Exchange.objects.filter(id=exchange_id).order_by("-id").first()
             symbol_price_list = MgObPersistence.objects.filter(
                 exchange=exchange,
-                status='Active'
             ).order_by("-id")
         elif  exchange_id == 0 and symbol_id != 0:
             symbol = Symbol.objects.filter(id=symbol_id).order_by("-id").first()
             symbol_price_list = MgObPersistence.objects.filter(
                 symbol=symbol,
-                status='Active'
             ).order_by("-id")
         else:
             exchange = Exchange.objects.filter(id=exchange_id).order_by("-id").first()
@@ -89,20 +85,19 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
             symbol_price_list = MgObPersistence.objects.filter(
                 exchange=exchange,
                 symbol=symbol,
-                status='Active'
             ).order_by("-id")
         for symbol_price in symbol_price_list:
             item = market_pb2.SymbolPrice(
-                id=symbol_price.id,
-                name=symbol_price.symbol.name,
-                base =symbol_price.symbol.base_asset,
-                quote = symbol_price.symbol.quote_asset,
-                buy_price=symbol_price.buy_price,
-                sell_price =symbol_price.sell_price,
-                avg_price =symbol_price.avg_price,
-                usd_price =symbol_price.usd_price,
-                cny_price =symbol_price.cny_price,
-                margin =symbol_price.margin,
+                id= str(ymbol_price.id),
+                name= str(symbol_price.symbol.name),
+                base = str(symbol_price.symbol.base_asset),
+                quote = str(symbol_price.symbol.quote_asset),
+                buy_price= str(symbol_price.buy_price),
+                sell_price = str(symbol_price.sell_price),
+                avg_price = str(symbol_price.avg_price),
+                usd_price = str(symbol_price.usd_price),
+                cny_price = str(symbol_price.cny_price),
+                margin = str(symbol_price.margin),
             )
             symbol_price_data.append(item)
         return market_pb2.SymbolPriceResponse(
@@ -130,19 +125,19 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
         coin_id = int(request.coin_id)
         stablecoin_price_list: List[market_pb2.StableCoin] = []
         if coin_id == 0:
-            stable_coin_prices = MgObPersistence.objects.all().order_by("-id")
+            stable_coin_prices = OtcAssetPrice.objects.all().order_by("-id")
         else:
             db_asset = Asset.objects.filter(id=coin_id).first()
-            stable_coin_prices = MgObPersistence.objects.filter(
-                qoute_asset=db_asset
+            stable_coin_prices = OtcAssetPrice.objects.filter(
+                asset=db_asset
             ).order_by("-id")
         for stable_coin_price in stable_coin_prices:
-            item = market_pb2.StableCoin(
-                id=stable_coin_price.id,
-                name=stable_coin_price.symbol.name,
-                usd_price=stable_coin_price.usd_price,
-                cny_price=stable_coin_price.cny_price,
-                margin=stable_coin_price.margin,
+            item = market_pb2.StableCoinPrice(
+                id=str(stable_coin_price.id),
+                name=stable_coin_price.asset.name,
+                usd_price=str(stable_coin_price.usd_price),
+                cny_price=str(stable_coin_price.cny_price),
+                margin=str(stable_coin_price.margin),
             )
             stablecoin_price_list.append(item)
         return market_pb2.StableCoinPriceResponse(
