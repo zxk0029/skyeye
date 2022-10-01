@@ -58,6 +58,7 @@ class OtcAssetPrice(BaseModel):
     )
     usd_price = DecField(default=0)
     cny_price = DecField(default=0)
+    margin =  DecField(default=0)
 
     class Meta:
         pass
@@ -66,5 +67,6 @@ class OtcAssetPrice(BaseModel):
         return {
             'asset': self.asset.name,
             'usd_price': format(self.usd_price, ".4f"),
-            'cny_price': format(self.cny_price, ".4f")
+            'cny_price': format(self.cny_price, ".4f"),
+            'margin': format(self.cny_price, ".4f")
         }
