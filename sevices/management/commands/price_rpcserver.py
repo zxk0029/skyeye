@@ -16,4 +16,5 @@ class Command(BaseCommand):
         )
         server.add_insecure_port('[::]:50250')
         server.start()
+        print("price rpc server start")
         server.wait_for_termination()

@@ -13,8 +13,7 @@ tz = pytz.timezone(settings.TIME_ZONE)
 
 class PriceServer(market_pb2_grpc.PriceServiceServicer):
     def getExchanges(self, request, context) -> market_pb2.ExchangeResponse:
-        global exchange_return_list
-        exchange_return_list: List[market_pb2.Exchange]
+        exchange_return_list: List[market_pb2.Exchange]  = []
         exchange_list = Exchange.objects.filter(status='Active').order_by("-id")
         for exchange in exchange_list:
             item = market_pb2.Exchange(
@@ -30,8 +29,7 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
         )
 
     def getAssets(self, request, context) -> market_pb2.AssetResponse:
-        global asset_return_list
-        asset_return_list: List[market_pb2.Asset]
+        asset_return_list: List[market_pb2.Asset] = []
         asset_list = Asset.objects.filter(status='Active').order_by("-id")
         for asset in asset_list:
             item = market_pb2.Asset(
@@ -47,8 +45,7 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
 
     def getSymbols(self, request, context)-> market_pb2.SymbolResponse:
         exchange_id = request.exchange_id
-        global symbol_return_list
-        symbol_return_list: List[market_pb2.Symbol]
+        symbol_return_list: List[market_pb2.Symbol] = []
         exchange_symbol_list = ExchangeSymbolShip.objects.filter(
             exchange=Exchange.objects.filter(id=exchange_id).first()
         ).order_by("-id")
@@ -69,8 +66,7 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
     def getSymbolPrices(self, request, context)-> market_pb2.SymbolPriceResponse:
         exchange_id = request.exchange_id
         symbol_id = request.symbol_id
-        global symbol_price_data
-        symbol_price_data: List[market_pb2.SymbolPrice]
+        symbol_price_data: List[market_pb2.SymbolPrice] = []
         symbol = Symbol.objects.filter(id=symbol_id).order_by("-id").first()
         exchange  = Exchange.objects.filter(id=exchange_id).order_by("-id").first()
         if exchange and symbol is None:
@@ -114,8 +110,7 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
         )
 
     def getStableCoins(self, request, context) -> market_pb2.StableCoinResponse:
-        global stable_coin_list
-        stable_coin_list: List[market_pb2.StableCoin]
+        stable_coin_list: List[market_pb2.StableCoin] = []
         stable_coins = Asset.objects.filter(status='Active', is_stable="Yes").order_by("-id")
         for stable_coin in stable_coins:
             item = market_pb2.StableCoin(
@@ -131,8 +126,7 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
 
     def getStableCoinPrice(self, request, context)-> market_pb2.StableCoinPriceResponse:
         coin_id = request.coin_id
-        global stablecoin_price_list
-        stablecoin_price_list: List[market_pb2.StableCoin]
+        stablecoin_price_list: List[market_pb2.StableCoin] = []
         db_asset = Asset.objects.filter(id=coin_id).first()
         if db_asset is None:
             stable_coin_prices = MgObPersistence.objects.all().order_by("-id")
