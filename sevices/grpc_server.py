@@ -88,7 +88,7 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
             ).order_by("-id")
         for symbol_price in symbol_price_list:
             item = market_pb2.SymbolPrice(
-                id= str(ymbol_price.id),
+                id= str(symbol_price.id),
                 name= str(symbol_price.symbol.name),
                 base = str(symbol_price.symbol.base_asset),
                 quote = str(symbol_price.symbol.quote_asset),
