@@ -92,6 +92,8 @@ class PriceServer(market_pb2_grpc.PriceServiceServicer):
                 name= str(symbol_price.symbol.name),
                 base = str(symbol_price.symbol.base_asset),
                 quote = str(symbol_price.symbol.quote_asset),
+                exchange = str(symbol_price.exchange.name),
+                symbol= str(symbol_price.symbol.name),
                 buy_price= str(symbol_price.buy_price),
                 sell_price = str(symbol_price.sell_price),
                 avg_price = str(symbol_price.avg_price),
