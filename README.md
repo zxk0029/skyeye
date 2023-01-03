@@ -9,10 +9,10 @@ parent:
 
 <div align="center">
   <a href="https://github.com/SavourDao/skyeye/releases/latest">
-    <img alt="Version" src="https://img.shields.io/github/tag/SavourDao/skyeye.svg" />
+    <img alt="Version" src="https://img.shields.io/github/tag/savour-labs/skyeye.svg" />
   </a>
   <a href="https://github.com/SavourDao/skyeye/blob/main/LICENSE">
-    <img alt="License: Apache-2.0" src="https://img.shields.io/github/license/SavourDao/skyeye.svg" />
+    <img alt="License: Apache-2.0" src="https://img.shields.io/github/license/savour-labs/skyeye.svg" />
   </a>
 </div>
 
