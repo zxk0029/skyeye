@@ -1,18 +1,18 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity()
-export class Asset {
+export class Exchange {
   @PrimaryColumn({ type: 'bigint', name: 'id' })
   id: number;
 
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'int' })
-  uint: number;
+  @Column({ type: 'text'})
+  config: string;
 
-  @Column({ type: 'boolean' })
-  is_stable: boolean;
+  @Column({ type: 'varchar', length: 255 })
+  market_type: string;
 
   @Column({ type: 'varchar', length: 255 })
   status: string;
