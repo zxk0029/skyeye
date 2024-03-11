@@ -1,18 +1,1 @@
-migrations: "./migrations"
-polygon_rpc: "https://polygon-mainnet.g.alchemy.com/v2/QySv9gLuQUaXy0BJnpNwW1d1N8ve0as4"
-rpc_url: "wallet-chain-node:8189"
-polygon_chain_id: "137"
-http_host: "0.0.0.0"
-http_port: 8087
-db_host: "postgresql"
-db_port: 5432
-db_name: "fishcake"
-db_user: "postgres"
-db_password: "vVb9NhLYui"
-metrics_host:
-metrics_port:
-start_block: 54043486
-eventStartBlock: 54043486
-contracts:
-    - "0x2E52285aB955e92F6451402C23857DFaD99B1bba"
-    - "0x7CEB2a114b1160677201a91a19134B5dc19697BF"
+
