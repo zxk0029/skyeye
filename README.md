@@ -20,15 +20,45 @@ skyeye is the market aggregator of the Savour project, which aggregates the mark
 
 **tips**: requirement [python3.8+](https://www.python.org/)
 
-## Install
+## Install And Local Runing
 
-### install
-```bash
-pip3 install -r  requirements.txt
+### 1.create virtual evn
+```
+git clone git@github.com:roothash-pay/hailstone.git
+cd hailstone
+python3 -m venv .env
+source venv/bin/activate
 ```
 
-### run 
-```bash
+### 2.install dependencies
+
+```
+pip3 install -r requirements.txt
+```
+
+### 3.config database
+```
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "hailstone",
+        "USER": "guoshijiang",
+        "PASSWORD": "",
+        "HOST": "127.0.0.1",
+    },
+}
+```
+Config it according to you environment
+
+### 4.migrate database
+
+```
+python3 manager migrations
+python3 manager migrate
+```
+
+### 5. run dev
+```
 python3 manager runserver
 ```
 
