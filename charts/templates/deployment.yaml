@@ -35,14 +35,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             {{- range $index, $val := .Values.ports }}
-            - name: {{ $val.name }}
-              containerPort: {{ $val.portNumber }}
-              protocol: TCP
-            {{- end }}
-            {{- with .Values.metrics }}
-            - name: metrics
-              containerPort: {{ .port | default 9090 }}
-              protocol: TCP
+            - name: http
+              containerPort: {{ $val.targetPort }}
+              protocol: {{ $val.protocol }}
             {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
@@ -54,7 +49,13 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
+          volumeMounts:
+            - mountPath: /app/media
+              name: host-storage
+      volumes:
+        - name: host-storage
+          hostPath:
+            path: /root/data
       initContainers:
         - name: {{ .Release.Name }}-migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -64,6 +65,7 @@ spec:
           command:
           - "/bin/sh"
           - "-c"
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}

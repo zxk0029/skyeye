@@ -4,27 +4,14 @@ metadata:
   name: {{ include "app.fullname" . }}
   labels:
     {{- include "app.labels" . | nindent 4 }}
-  annotations:
-    release: {{ .Release.Name }}
-    {{- if .Values.metrics }}
-    prometheus.io/path: /metrics
-    prometheus.io/port: {{ .Values.metrics.port | default 9090 | quote }}
-    prometheus.io/scrape: "true"
-    {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     {{- range $index, $val := .Values.ports }}
-    - port: {{ $val.portNumber }}
-      targetPort: {{ $val.portNumber }}
-      protocol: TCP
-      name: {{  $val.name }}
-    {{- end }}
-    {{- with .Values.metrics }}
-    - port: {{ .port | default 9090 }}
-      targetPort: {{ .port | default 9090 }}
-      name: metrics
-      protocol: TCP
+    - nodePort: {{ $val.nodePort }}
+      targetPort: {{ $val.targetPort }}
+      protocol: {{ $val.protocol }}
+      port: {{  $val.port }}
     {{- end }}
   selector:
     {{- include "app.selectorLabels" . | nindent 4 }}
