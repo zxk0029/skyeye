@@ -1,4 +1,4 @@
-name: App Image Build And Deploy
+name: Skeye Image Build And Deploy
 on:
   workflow_dispatch:
     inputs:
@@ -36,11 +36,11 @@ jobs:
             appname="skyeye"
             tag_name="${registry}/${namespace}/${appname}"
             docker login --username=100003588471 -p dapplink@go hkccr.ccs.tencentyun.com
-            docker build --pull  -t ${tag_name}:v0.0.1 .
-            docker push ${tag_name}:v0.0.1
+            docker build --pull  -t ${tag_name}:v1.0.0 .
+            docker push ${tag_name}:v1.0.0
             
             HELM_OPTS="${HELM_OPTS} --set image.repository=${tag_name}"
-            HELM_OPTS="${HELM_OPTS} --set image.tag=v0.0.9"
+            HELM_OPTS="${HELM_OPTS} --set image.tag=v1.0.0"
             if [ ${{github.event.inputs.environment }} == "testnet" ]; then
               helm template ${{ env.app }} -f values.yaml charts ${HELM_OPTS} 
               helm upgrade --install ${{ env.app }} -f values.yaml charts ${HELM_OPTS}
