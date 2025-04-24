@@ -4,6 +4,6 @@ DATABASES = {
         "NAME": "skyeye",
         "USER": "postgres",
         "PASSWORD": "DappLink2024!",
-        "HOST": "postgres-service",
+        "HOST": "my-postgres-postgresql",
     },
 }
