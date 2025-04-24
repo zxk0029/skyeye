@@ -42,7 +42,7 @@ service:
 
 ports:
   - protocol: TCP
-    port: 9012
+    port: 9015
     targetPort: 8201
     nodePort: 30012
 
