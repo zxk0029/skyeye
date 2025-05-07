@@ -14,7 +14,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'common',
     'exchange',
-    'sevices',
+    'services',
     'backoffice',
     'frontend',
     'dex'

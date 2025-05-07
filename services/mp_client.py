@@ -3,7 +3,7 @@
 import grpc
 from django.conf import settings
 
-from sevices.savourrpc import market_pb2_grpc, market_pb2
+from services.savourrpc import market_pb2_grpc, market_pb2
 
 
 class MpClient:

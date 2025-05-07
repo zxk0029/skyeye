@@ -3,7 +3,7 @@
 
 from django.core.management.base import BaseCommand
 
-from sevices.mp_client import MpClient
+from services.mp_client import MpClient
 
 
 class Command(BaseCommand):

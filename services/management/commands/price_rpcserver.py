@@ -5,8 +5,8 @@ from concurrent import futures
 import grpc
 from django.core.management.base import BaseCommand
 
-from sevices.grpc_server import PriceServer
-from sevices.savourrpc import market_pb2_grpc
+from services.grpc_server import PriceServer
+from services.savourrpc import market_pb2_grpc
 
 
 class Command(BaseCommand):

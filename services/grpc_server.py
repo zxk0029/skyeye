@@ -7,7 +7,7 @@ from django.conf import settings
 
 from backoffice.models import MgObPersistence, Symbol, Asset, OtcAssetPrice
 from exchange.models import Exchange, ExchangeSymbolShip
-from sevices.savourrpc import market_pb2_grpc, common_pb2, market_pb2
+from services.savourrpc import market_pb2_grpc, common_pb2, market_pb2
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
