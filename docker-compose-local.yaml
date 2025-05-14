@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  db-master:
+    image: postgres:15 # Or your preferred PostgreSQL version
+    container_name: skyeye-postgres-master
+    environment:
+      POSTGRES_DB: skyeye # Your database name
+      POSTGRES_USER: skyeye_user # Your username
+      POSTGRES_PASSWORD: your_secure_password # CHANGE THIS PASSWORD
+      # Pass replication password to the init script
+      REPL_PASSWORD: your_repl_password # CHANGE THIS
+    volumes:
+      - postgres_master_data:/var/lib/postgresql/data
+      # Mount the init script
+      - ./postgres/master/init-master.sh:/docker-entrypoint-initdb.d/init-master.sh
+      # You might later mount configuration files here:
+      # - ./postgres/master/postgresql.conf:/etc/postgresql/postgresql.conf
+      # - ./postgres/master/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    ports:
+      - "5432:5432" # Expose master on host port 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  db-slave:
+    image: postgres:15 # Use the same version as master
+    container_name: skyeye-postgres-slave
+    environment:
+      # Pass replication password to the init script
+      REPL_PASSWORD: your_repl_password # Use the same password as master env
+      # PGUSER/PGPASSWORD are not strictly needed if script handles auth, but don't hurt
+      PGUSER: skyeye_user
+      PGPASSWORD: your_secure_password
+    volumes:
+      - postgres_slave_data:/var/lib/postgresql/data
+      # Mount the init script
+      # NOTE: This script runs *before* the main postgres process starts effectively,
+      #       as it needs to prepare the data directory *before* postgres uses it.
+      #       We override the command to ensure it runs first.
+      - ./postgres/slave/init-slave.sh:/init-slave.sh
+      # You will need to configure replication, possibly by mounting recovery.conf or setting primary_conninfo
+      # - ./postgres/slave/postgresql.conf:/etc/postgresql/postgresql.conf # If needed
+      # - ./postgres/slave/recovery.conf:/var/lib/postgresql/data/recovery.conf # For older PG versions
+    ports:
+      - "5433:5432" # Expose slave on host port 5433 (maps to container's 5432)
+    # Override command to run our script first, then the original entrypoint
+    command: >
+      bash -c "chmod +x /init-slave.sh && /init-slave.sh && exec docker-entrypoint.sh postgres"
+    depends_on:
+      db-master:
+        condition: service_healthy # Wait for master to be ready before starting slave setup
+    healthcheck:
+      # Check if standby is running and accepting connections
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give slave time to initialize
+    restart: unless-stopped
+
+volumes:
+  postgres_master_data:
+    driver: local # Explicitly use local driver
+  postgres_slave_data:
+    driver: local # Explicitly use local driver 

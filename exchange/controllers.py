@@ -378,3 +378,67 @@ async def merge_usdt_orderbooks(symbol: Symbol):
         'bids_hidden': 0,
     }
     return orderbook, messages
+
+
+def set_ohlcv(exchange_name, symbol_name, timeframe, data: list) -> None:
+    """保存K线数据到Redis
+    
+    Args:
+        exchange_name: 交易所名称
+        symbol_name: 交易对名称
+        timeframe: 时间周期 (1min, 30m, 1h, 1d, 1w, 1month, 3months, 12months)
+        data: K线数据列表 [[timestamp, open, high, low, close, volume], ...]
+    """
+    key = f'{exchange_name}:{symbol_name}:ohlcv:{timeframe}'
+    global_redis().set(key, json.dumps(data))
+    # 设置30分钟过期时间
+    global_redis().expire(key, 1800)
+
+
+def get_ohlcv(exchange_name, symbol_name, timeframe) -> Optional[list]:
+    """获取K线数据
+    
+    Args:
+        exchange_name: 交易所名称
+        symbol_name: 交易对名称
+        timeframe: 时间周期 (1min, 30m, 1h, 1d, 1w, 1month, 3months, 12months)
+        
+    Returns:
+        K线数据列表 [[timestamp, open, high, low, close, volume], ...]
+    """
+    key = f'{exchange_name}:{symbol_name}:ohlcv:{timeframe}'
+    data = global_redis().get(key)
+    if data:
+        return json.loads(data)
+    return None
+
+
+def set_market_data(exchange_name, symbol_name, data: dict) -> None:
+    """保存市场综合数据到Redis
+    
+    Args:
+        exchange_name: 交易所名称
+        symbol_name: 交易对名称
+        data: 市场数据字典，包含价格、涨幅、交易量等
+    """
+    key = f'{exchange_name}:{symbol_name}:market_data'
+    global_redis().set(key, json.dumps(data))
+    # 设置5分钟过期时间
+    global_redis().expire(key, 300)
+
+
+def get_market_data(exchange_name, symbol_name) -> Optional[dict]:
+    """获取市场综合数据
+    
+    Args:
+        exchange_name: 交易所名称
+        symbol_name: 交易对名称
+        
+    Returns:
+        市场数据字典
+    """
+    key = f'{exchange_name}:{symbol_name}:market_data'
+    data = global_redis().get(key)
+    if data:
+        return json.loads(data)
+    return None
