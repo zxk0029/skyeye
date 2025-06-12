@@ -1,0 +1,798 @@
+openapi: "3.1.0"
+info:
+  title: "SkyEye API"
+  description: "SkyEye 项目的后端 API 文档"
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:8000"
+paths:
+  /api/v1/cmc/market-data:
+    get:
+      summary: "【CMC】获取市场行情数据"
+      description: |
+        此接口用于获取市场行情数据，根据查询参数的不同，有三种主要行为：
+
+        1.  **查询单个资产的详情**: 提供 `cmc_id` 参数，将返回该特定资产的详细市场数据 (`MarketData` 对象)。
+
+        2.  **批量查询多个资产**: 提供 `cmc_ids` 参数（逗号分隔的ID列表），将返回一个包含多个资产行情摘要 (`MarketDataSummary` 对象) 的列表。
+
+        3.  **分页查询所有资产**: 提供 `page` 和 `page_size` 参数，将返回一个分页列表，其中包含所有资产的行情摘要 (`MarketDataSummary` 对象)。如果省略分页参数，将使用默认值。
+      parameters:
+        - name: cmc_id
+          in: query
+          schema:
+            type: integer
+          description: "代币的 CoinMarketCap ID"
+        - name: cmc_ids
+          in: query
+          schema:
+            type: string
+          description: "逗号分隔的多个 CoinMarketCap ID"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: "页码，默认为1"
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: "每页返回的项目数，默认为20"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  code:
+                    type: integer
+                  result:
+                    oneOf:
+                      - $ref: "#/components/schemas/MarketData"
+                      - type: object
+                        properties:
+                          page:
+                            type: integer
+                          pages:
+                            type: integer
+                          total:
+                            type: integer
+                          results:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/MarketDataSummary"
+                      - type: object
+                        properties:
+                          results:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/MarketDataSummary"
+              examples:
+                单个资产查询:
+                  summary: "查询单个资产市场数据 (cmc_id=1)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      price_usd: 105778.90269159502
+                      fully_diluted_market_cap: 2221356956523.5
+                      market_cap: 2102466018390.9585
+                      volume_24h: 36792095698.9018
+                      volume_24h_token_count: 347820.73516277
+                      circulating_supply: 19876043.0
+                      total_supply: 19876043.0
+                      cmc_rank: 1
+                      timestamp: "2025-06-08T14:26:00+00:00"
+                      klines:
+                        - timestamp: "2025-06-10T02:00:00+00:00"
+                          open: 109815.75403907216
+                          high: 109822.22483500246
+                          low: 109420.44122039937
+                          close: 109672.23250514665
+                          volume: 58340735426.74
+                          volume_token_count: 531955.39193571
+                        - timestamp: "2025-06-10T03:00:00+00:00"
+                          open: 109690.021297883
+                          high: 109716.13733712118
+                          low: 109438.06184436117
+                          close: 109572.55907883184
+                          volume: 58221445203.26
+                          volume_token_count: 531350.6017631
+                      high_24h: 109864.8316084307
+                      low_24h: 109086.00632893587
+                分页查询:
+                  summary: "分页查询市场数据 (page=1, page_size=2)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      page: 1
+                      pages: 100
+                      total: 200
+                      results:
+                        - cmc_id: 825
+                          symbol: "USDT"
+                          price_usd: 1.0004418520795266
+                          cmc_rank: 3
+                          percent_change_24h: -0.01939952
+                          volume_24h: 55805845265.99877
+                          updated_at: "2025-06-08T14:26:00+00:00"
+                          klines:
+                            - timestamp: "2025-06-10T02:00:00+00:00"
+                              open: 1.000224496597162
+                              high: 1.000425922205712
+                              low: 0.9998945973031169
+                              close: 1.0002491563963367
+                              volume: 83707804353.9
+                              volume_token_count: 83686953214.21674
+                          high_24h: 1.0006865912549459
+                          low_24h: 0.9997629980303528
+                        - cmc_id: 1
+                          symbol: "BTC"
+                          price_usd: 105778.90269159502
+                          cmc_rank: 1
+                          percent_change_24h: 0.26265112
+                          volume_24h: 36792095698.9018
+                          updated_at: "2025-06-08T14:26:00+00:00"
+                          high_24h: 109864.8316084307
+                          low_24h: 109086.00632893587
+                多资产查询:
+                  summary: "查询多个资产市场数据 (cmc_ids=1,1027,74)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      results:
+                        - cmc_id: 1
+                          symbol: "BTC"
+                          price_usd: 105778.90269159502
+                          cmc_rank: 1
+                          percent_change_24h: 0.26265112
+                          volume_24h: 36792095698.9018
+                          updated_at: "2025-06-08T14:26:00+00:00"
+                          high_24h: 109864.8316084307
+                          low_24h: 109086.00632893587
+                        - cmc_id: 1027
+                          symbol: "ETH"
+                          price_usd: 2511.4778456158037
+                          cmc_rank: 2
+                          percent_change_24h: 0.1433366
+                          volume_24h: 11336191097.655651
+                          updated_at: "2025-06-08T14:27:00+00:00"
+                          high_24h: 2796.8096097859193
+                          low_24h: 2658.6771446822954
+                        - cmc_id: 74
+                          symbol: "DOGE"
+                          price_usd: 0.18365369318018415
+                          cmc_rank: 8
+                          percent_change_24h: -1.68108446
+                          volume_24h: 768052903.5603061
+                          updated_at: "2025-06-08T14:26:00+00:00"
+                          high_24h: 0.1951953771780864
+                          low_24h: 0.1937621204533163
+  /api/v1/cmc/token-allocations:
+    get:
+      summary: "【CMC】获取代币经济模型"
+      parameters:
+        - name: cmc_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: "代币的 CoinMarketCap ID"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  code:
+                    type: integer
+                  result:
+                    type: object
+                    properties:
+                      cmc_id:
+                        type: integer
+                      name:
+                        type: string
+                      symbol:
+                        type: string
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            percentage:
+                              type: string
+                            unlocked_percent:
+                              type: string
+                            unlock_progress:
+                              type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+              examples:
+                代币经济模型示例:
+                  summary: "获取代币经济模型示例 (cmc_id=24220)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      cmc_id: 24220
+                      name: "Propchain"
+                      symbol: "PROPC"
+                      categories:
+                        - name: "Treasury"
+                          percentage: "13.4090"
+                          unlocked_percent: "5.833225"
+                          unlock_progress: "43.502438"
+                        - name: "DBM"
+                          percentage: "10.3898"
+                          unlocked_percent: "5.765717"
+                          unlock_progress: "55.494128"
+                        - name: "Advisors"
+                          percentage: "4.1575"
+                          unlocked_percent: "4.157453"
+                          unlock_progress: "100.000000"
+                        - name: "Community"
+                          percentage: "10.3143"
+                          unlocked_percent: "3.278238"
+                          unlock_progress: "31.783383"
+                        - name: "Team"
+                          percentage: "8.8217"
+                          unlocked_percent: "2.413711"
+                          unlock_progress: "27.361111"
+                      created_at: "2025-06-04T13:38:44.048099Z"
+                      updated_at: "2025-06-04T14:16:26.685837Z"
+  /api/v1/cmc/token-unlocks:
+    get:
+      summary: "【CMC】获取代币解锁信息"
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: "页码，默认为1"
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: "每页返回的项目数，默认为20"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  code:
+                    type: integer
+                  result:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      total:
+                        type: integer
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            cmc_id:
+                              type: integer
+                            name:
+                              type: string
+                            symbol:
+                              type: string
+                            locked_ratio:
+                              type: string
+                            unlocked_ratio:
+                              type: string
+                            next_unlock_date:
+                              type: string
+                              format: date-time
+                            next_unlock_amount:
+                              type: string
+                            next_unlock_percentage:
+                              type: string
+                            created_at:
+                              type: string
+                              format: date-time
+                            updated_at:
+                              type: string
+                              format: date-time
+                            events:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  unlock_date:
+                                    type: string
+                                    format: date-time
+                                  unlock_amount:
+                                    type: string
+                                  unlock_percentage:
+                                    type:
+                                      - "string"
+                                      - "null"
+                                  allocation_name:
+                                    type: string
+                                  vesting_type:
+                                    type: string
+              examples:
+                代币解锁信息示例:
+                  summary: "获取代币解锁信息示例 (page=1, page_size=2)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      page: 1
+                      pages: 212
+                      total: 423
+                      results:
+                        - cmc_id: 29835
+                          name: "io.net"
+                          symbol: "IO"
+                          locked_ratio: "79.6600"
+                          unlocked_ratio: "20.3400"
+                          next_unlock_date: "2025-06-11T12:00:00Z"
+                          next_unlock_amount: "3071417.8333333302"
+                          next_unlock_percentage: "0.3800"
+                          created_at: "2025-06-04T12:46:28.717579Z"
+                          updated_at: "2025-06-04T12:46:28.717582Z"
+                          events:
+                            - unlock_date: "2025-06-11T12:00:00Z"
+                              unlock_amount: "3071417.8333333302"
+                              unlock_percentage: null
+                              allocation_name: "Ecosystem incentives"
+                              vesting_type: "linear"
+                        - cmc_id: 26636
+                          name: "Dappad"
+                          symbol: "APPA"
+                          locked_ratio: "48.7300"
+                          unlocked_ratio: "51.2700"
+                          next_unlock_date: "2025-06-12T00:00:00Z"
+                          next_unlock_amount: "26454359.9999999888"
+                          next_unlock_percentage: "3.0400"
+                          created_at: "2025-06-04T12:46:28.722388Z"
+                          updated_at: "2025-06-04T12:46:28.722396Z"
+                          events:
+                            - unlock_date: "2025-06-12T00:00:00Z"
+                              unlock_amount: "7894500.0000000000"
+                              unlock_percentage: null
+                              allocation_name: "Team"
+                              vesting_type: "linear"
+                            - unlock_date: "2025-06-12T00:00:00Z"
+                              unlock_amount: "6122999.9999999898"
+                              unlock_percentage: null
+                              allocation_name: "Ecosystem & Growth"
+                              vesting_type: "linear"
+  /api/v1/cmc/holdings:
+    get:
+      summary: "【CMC】获取代币链上持仓"
+      parameters:
+        - name: cmc_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: "代币的 CoinMarketCap ID"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  code:
+                    type: integer
+                  result:
+                    type: object
+                    properties:
+                      symbol:
+                        type: string
+                      cmc_id:
+                        type: integer
+                      top_holders:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            address:
+                              type: string
+                            balance:
+                              type: number
+                            amount_usd:
+                              type: number
+                            percent:
+                              type: number
+                            order:
+                              type: integer
+                            explorer_url:
+                              type: string
+                      summary:
+                        type: object
+                        properties:
+                          holder_count:
+                            type: integer
+                          last_updated:
+                            type: string
+                            format: date-time
+              examples:
+                代币链上持仓示例:
+                  summary: "获取代币链上持仓示例 (cmc_id=6536)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      symbol: "OM"
+                      cmc_id: 6536
+                      top_holders:
+                        - address: "0x073f564419b625a45d8aea3bb0de4d5647113ad7"
+                          balance: 144202597.95
+                          amount_usd: 43925055.29633192
+                          percent: 8.61
+                          order: 1
+                          explorer_url: "https://etherscan.io/address/0x073f564419b625a45d8aea3bb0de4d5647113ad7"
+                        - address: "0xf977814e90da44bfa03b6295a0616a897441acec"
+                          balance: 105678958.478
+                          amount_usd: 32190502.53459678
+                          percent: 6.31
+                          order: 2
+                          explorer_url: "https://etherscan.io/address/0xf977814e90da44bfa03b6295a0616a897441acec"
+                        - address: "0x1ea973a69643091410721c7d91aa5499cf8d2cb7"
+                          balance: 73578721.5279807
+                          amount_usd: 22412560.22912006
+                          percent: 4.39
+                          order: 3
+                          explorer_url: "https://etherscan.io/address/0x1ea973a69643091410721c7d91aa5499cf8d2cb7"
+                      summary:
+                        holder_count: 130606
+                        last_updated: "2025-06-10T09:06:54.673422+00:00"
+  /api/v1/cmc/klines:
+    get:
+      summary: "【CMC】【可选】独立获取K线数据"
+      description: |
+        ---
+        **注意：此接口为可选接口。**
+
+        通常情况下，行情接口 (`/api/v1/cmc/market-data`) 的返回结果中已包含了K线数据。
+        此接口仅在需要专门、独立地获取K线数据时使用。
+
+        ---
+
+        此接口用于获取K线数据，根据查询参数的不同，有两种主要行为：
+
+        1.  **查询单个资产的K线**: 提供 `cmc_id` 参数，将返回该特定资产的K线数据。
+
+        2.  **分页查询多个资产的K线**: 提供 `page` 和 `page_size` 参数，将返回一个分页列表，其中包含多个资产的K线数据。如果省略分页参数，将使用默认值。
+      parameters:
+        - name: cmc_id
+          in: query
+          schema:
+            type: integer
+          description: "代币的 CoinMarketCap ID"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: "页码，默认为1"
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: "每页返回的项目数，默认为20"
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 744
+          description: "获取过去多少小时内的数据，默认为24小时。有效范围为1-744（即最多一个月），超出范围的值会被自动截断到744。"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  code:
+                    type: integer
+                  result:
+                    oneOf:
+                      - type: object
+                        properties:
+                          asset:
+                            type: object
+                            properties:
+                              cmc_id:
+                                type: integer
+                              symbol:
+                                type: string
+                              name:
+                                type: string
+                          timeframe:
+                            type: string
+                          count:
+                            type: integer
+                          high_24h:
+                            type: number
+                          low_24h:
+                            type: number
+                          klines:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Kline"
+                      - type: object
+                        properties:
+                          page:
+                            type: integer
+                          pages:
+                            type: integer
+                          total:
+                            type: integer
+                          timeframe:
+                            type: string
+                          results:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/KlinesForAsset"
+              examples:
+                单个资产K线示例:
+                  summary: "获取单个资产K线数据示例 (cmc_id=1027)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      asset:
+                        cmc_id: 1027
+                        symbol: "ETH"
+                        name: "Ethereum"
+                      timeframe: "1h"
+                      count: 11
+                      high_24h: 2796.8096097859193
+                      low_24h: 2658.6771446822954
+                      klines:
+                        - timestamp: "2025-06-10T02:00:00+00:00"
+                          open: 2709.1095872892042
+                          high: 2710.0482399890557
+                          low: 2679.263734146415
+                          close: 2692.5046593496486
+                          volume: 24370240583.67
+                          volume_token_count: 9051141.47121157
+                        - timestamp: "2025-06-10T03:00:00+00:00"
+                          open: 2692.6345335374453
+                          high: 2693.9427621655186
+                          low: 2677.658871146917
+                          close: 2688.9118931101593
+                          volume: 23990855612.8
+                          volume_token_count: 8922142.69804531
+                分页K线示例:
+                  summary: "分页获取K线数据示例 (page=1, page_size=2, hours=1000)"
+                  value:
+                    ok: true
+                    code: 200
+                    result:
+                      page: 1
+                      pages: 50
+                      total: 100
+                      timeframe: "1h"
+                      results:
+                        - cmc_id: 1
+                          symbol: "BTC"
+                          name: "Bitcoin"
+                          klines:
+                            - timestamp: "2025-06-09T12:00:00+00:00"
+                              open: 107774.46141401173
+                              high: 107967.36684958293
+                              low: 107596.99623914709
+                              close: 107829.49490044972
+                              volume: 45730927717.65
+                              volume_token_count: 424104.07059654
+                            - timestamp: "2025-06-09T13:00:00+00:00"
+                              open: 107834.65233979683
+                              high: 107893.70494539544
+                              low: 106950.88474188639
+                              close: 107156.05355604607
+                              volume: 43149582710.68
+                              volume_token_count: 402679.84195696
+                          high_24h: 109864.8316084307
+                          low_24h: 109086.00632893587
+                        - cmc_id: 1027
+                          symbol: "ETH"
+                          name: "Ethereum"
+                          klines:
+                            - timestamp: "2025-06-09T12:00:00+00:00"
+                              open: 2709.1095872892042
+                              high: 2710.0482399890557
+                              low: 2679.263734146415
+                              close: 2692.5046593496486
+                              volume: 24370240583.67
+                              volume_token_count: 9051141.47121157
+                          high_24h: 2796.8096097859193
+                          low_24h: 2658.6771446822954 
+components:
+  schemas:
+    Kline:
+      type: object
+      description: "标准的K线数据单元（蜡烛图）"
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: "时间戳"
+        open:
+          type: number
+          description: "开盘价"
+        high:
+          type: number
+          description: "最高价"
+        low:
+          type: number
+          description: "最低价"
+        close:
+          type: number
+          description: "收盘价"
+        volume:
+          type: number
+          description: "交易量（计价货币）"
+        volume_token_count:
+          type: number
+          description: "交易量（代币数量）"
+    Quote:
+      type: object
+      description: "详细的报价信息"
+      properties:
+        price:
+          type: number
+          description: "价格"
+        volume_24h:
+          type: number
+          description: "24小时交易量"
+        volume_change_24h:
+          type: number
+          description: "24小时交易量变化百分比"
+        percent_change_1h:
+          type: number
+          description: "1小时价格变化百分比"
+        percent_change_24h:
+          type: number
+          description: "24小时价格变化百分比"
+        percent_change_7d:
+          type: number
+          description: "7天价格变化百分比"
+        percent_change_30d:
+          type: number
+          description: "30天价格变化百分比"
+        percent_change_60d:
+          type: number
+          description: "60天价格变化百分比"
+        percent_change_90d:
+          type: number
+          description: "90天价格变化百分比"
+        market_cap:
+          type: number
+          description: "市值"
+        market_cap_dominance:
+          type: number
+          description: "市值占比"
+        fully_diluted_market_cap:
+          type: number
+          description: "完全稀释后市值"
+        tvl:
+          type:
+            - "number"
+            - "null"
+          description: "总锁仓价值 (TVL)"
+        last_updated:
+          type: string
+          format: date-time
+          description: "最后更新时间"
+    MarketDataSummary:
+      type: object
+      description: "市场行情数据的摘要信息，用于列表展示"
+      properties:
+        cmc_id:
+          type: integer
+        symbol:
+          type: string
+        price_usd:
+          type: number
+        cmc_rank:
+          type: integer
+        percent_change_24h:
+          type: number
+        volume_24h:
+          type: number
+        updated_at:
+          type: string
+          format: date-time
+        klines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Kline"
+        high_24h:
+          type: number
+        low_24h:
+          type: number
+    MarketData:
+      type: object
+      description: "单个资产的详细市场数据"
+      properties:
+        price_usd:
+          type: number
+        fully_diluted_market_cap:
+          type: number
+        market_cap:
+          type: number
+        volume_24h:
+          type: number
+        volume_24h_token_count:
+          type: number
+        circulating_supply:
+          type: number
+        total_supply:
+          type: number
+        cmc_rank:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        klines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Kline"
+        high_24h:
+          type: number
+        low_24h:
+          type: number
+    KlinesForAsset:
+      type: object
+      description: "单个资产及其关联的K线数据，用于分页列表"
+      properties:
+        cmc_id:
+          type: integer
+        symbol:
+          type: string
+        name:
+          type: string
+        klines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Kline"
+        high_24h:
+          type: number
+        low_24h:
+          type: number

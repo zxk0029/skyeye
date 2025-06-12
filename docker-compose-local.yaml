@@ -1,0 +1,68 @@
+services:
+  db-master:
+    image: postgres:15
+    container_name: skyeye-postgres-master
+    environment:
+      POSTGRES_DB: skyeye
+      POSTGRES_USER: skyeye_user
+      POSTGRES_PASSWORD: '123456'
+      REPL_PASSWORD: '123456'
+    volumes:
+      - postgres_master_data:/var/lib/postgresql/data
+      - ./scripts/postgres/master/init-master.sh:/docker-entrypoint-initdb.d/init-master.sh
+    ports:
+      - "5430:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  db-slave:
+    image: postgres:15
+    container_name: skyeye-postgres-slave
+    environment:
+      REPL_PASSWORD: '123456'
+      PGUSER: skyeye_user
+      PGPASSWORD: '123456'
+      POSTGRES_DB: skyeye
+    volumes:
+      - postgres_slave_data:/var/lib/postgresql/data
+      - ./scripts/postgres/slave/init-slave.sh:/init-slave.sh
+    ports:
+      - "5431:5432"
+    command: >
+      bash -c "chmod +x /init-slave.sh && /init-slave.sh && exec docker-entrypoint.sh postgres"
+    depends_on:
+      db-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$PGUSER -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:8
+    container_name: skyeye-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_master_data:
+    driver: local
+  postgres_slave_data:
+    driver: local
+  redis_data:
+    driver: local
