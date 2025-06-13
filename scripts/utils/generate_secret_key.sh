@@ -17,11 +17,11 @@ fi
 
 # Generate the secret key using Django's official method
 echo "🔄 Generating key using Django's official method..."
-SECRET_KEY=$(uv run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
+SECRET_KEY=$( python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
 
 if [ $? -ne 0 ] || [ -z "$SECRET_KEY" ]; then
     echo "❌ Failed to generate SECRET_KEY"
-    echo "   Make sure Django is installed and accessible via 'uv run python'"
+    echo "   Make sure Django is installed and accessible via ' python'"
     exit 1
 fi
 
