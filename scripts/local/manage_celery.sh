@@ -13,7 +13,7 @@ export PYTHONNOUSERSITE=1
 export PYTHONHOSTSTATICOVERRIDE=1
 
 # 获取CPU核心数
-CPU_CORES=$(sysctl -n hw.physicalcpu)
+CPU_CORES=8
 # 设置worker数量为CPU核心数
 WORKER_COUNT=$((CPU_CORES))
 # 确保至少有2个worker
