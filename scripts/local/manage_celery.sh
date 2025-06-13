@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 激活虚拟环境
-source .venv/bin/activate
+#source .venv/bin/activate
 
 # 设置Python DNS解析配置
 export PYTHONWARNINGS="ignore:Unverified HTTPS request"

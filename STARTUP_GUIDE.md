@@ -295,28 +295,28 @@ uv run python -m apps.cmc_proxy.tests
 ```bash
 # 1. 【CMC】获取市场行情数据
 # 分页查询所有资产
-curl -s "http://localhost:8000/api/v1/cmc/market-data?page=1&page_size=5" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/market-data?page=1&page_size=5" | python -m json.tool
 
 # 查询单个资产详情（比特币 ID=1）
-curl -s "http://localhost:8000/api/v1/cmc/market-data?cmc_id=1" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/market-data?cmc_id=1" | python -m json.tool
 
 # 批量查询多个资产（BTC、ETH、DOGE）
-curl -s "http://localhost:8000/api/v1/cmc/market-data?cmc_ids=1,1027,74" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/market-data?cmc_ids=1,1027,74" | python -m json.tool
 
 # 2. 【CMC】获取代币经济模型
-curl -s "http://localhost:8000/api/v1/cmc/token-allocations?cmc_id=1" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/token-allocations?cmc_id=1" | python -m json.tool
 
 # 3. 【CMC】获取代币解锁信息
-curl -s "http://localhost:8000/api/v1/cmc/token-unlocks?cmc_id=1" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/token-unlocks?cmc_id=1" | python -m json.tool
 
 # 4. 【CMC】获取代币持仓信息
-curl -s "http://localhost:8000/api/v1/cmc/holdings?cmc_id=1" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/holdings?cmc_id=1" | python -m json.tool
 
 # 5. 【CMC】获取K线数据
-curl -s "http://localhost:8000/api/v1/cmc/klines?cmc_id=1&interval=1h&limit=24" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/cmc/klines?cmc_id=1&interval=1h&limit=24" | python -m json.tool
 
 # 6. 【CCXT】获取价格预言机数据
-curl -s "http://localhost:8000/api/v1/ccxt/price" | python -m json.tool
+curl -s "http://localhost:8201/api/v1/ccxt/price" | python -m json.tool
 ```
 
 **验证成功标准：**
