@@ -1,23 +1,91 @@
 import os
+import environ
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SECRET_KEY = 'xrszzb$tq7!!6n0h9%%g@0)*g%o*eg5g2+*u4vi1-t9nxwc*vs'
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+
+# Initialize environment variables
+env = environ.Env(
+    # Django Core Settings
+    DEBUG=(bool, False),
+    SECRET_KEY=(str, ''),
+    ALLOWED_HOSTS=(list, []),
+    
+    # Database Settings
+    POSTGRES_DB=(str, 'skyeye'),
+    POSTGRES_USER=(str, 'skyeye_user'),
+    POSTGRES_PASSWORD=(str, ''),
+    POSTGRES_HOST_MASTER=(str, '127.0.0.1'),
+    POSTGRES_PORT_MASTER=(str, '5430'),
+    POSTGRES_HOST_SLAVE=(str, '127.0.0.1'),
+    POSTGRES_PORT_SLAVE=(str, '5431'),
+    
+    # Redis Settings
+    REDIS_URL=(str, 'redis://localhost:6379/0'),
+    REDIS_CMC_URL=(str, 'redis://localhost:6379/1'),
+    REDIS_TRADING_HOST=(str, '127.0.0.1'),
+    REDIS_TRADING_PORT=(int, 6379),
+    REDIS_TRADING_DB=(int, 2),
+    REDIS_TRADING_PASSWORD=(str, ''),
+    
+    # Celery Settings
+    CELERY_BROKER_URL=(str, 'redis://localhost:6379/0'),
+    CELERY_RESULT_BACKEND=(str, 'redis://localhost:6379/0'),
+    
+    # External API Settings
+    COINMARKETCAP_API_KEY=(str, ''),
+    COINMARKETCAP_BASE_URL=(str, 'https://pro-api.coinmarketcap.com/v1'),
+    FRANKFURTER_API_URL=(str, 'https://api.frankfurter.app/latest?from=USD&to=CNY'),
+    
+    # Application Settings
+    DEFAULT_USD_CNY_RATE=(str, '7.29'),
+    DJANGO_LOG_LEVEL=(str, 'INFO'),
+    LANGUAGE_CODE=(str, 'en-us'),
+    
+    # Business Logic Settings
+    GRPC_MAX_MESSAGE_LENGTH=(int, 2048),
+    
+    # Celery Task Settings
+    CELERY_TASK_TIME_LIMIT=(int, 600),
+)
+
+# Read .env file if it exists
+env_file = os.path.join(BASE_DIR, '.env')
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)
+
+# Security settings
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+
+# Ensure SECRET_KEY is set in production
+if not SECRET_KEY and not DEBUG:
+    raise ValueError("SECRET_KEY must be set in production environment")
 
 INSTALLED_APPS = [
+    # Django modules
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Local apps
     'common',
-    'exchange',
-    'sevices',
-    'backoffice',
-    'frontend',
-    'dex'
+    # 'services',
+    # 'apps.backoffice',
+    # 'apps.exchange',
+    # 'apps.frontend',
+    'apps.price_oracle',
+    'apps.token_economics',
+    'apps.token_unlocks',
+    'apps.token_holdings',
+    'apps.api_router',
+    'apps.cmc_proxy',
+    # Third-party modules
+    'rest_framework',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -50,24 +118,53 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'skyeye.wsgi.application'
 
+# Database configuration using environment variables
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "skyeye",
-        "USER": "postgres",
-        "PASSWORD": "DappLink2024!",
-        "HOST": "my-postgres-postgresql",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('POSTGRES_DB'),
+        'USER': env('POSTGRES_USER'),
+        'PASSWORD': env('POSTGRES_PASSWORD'),
+        'HOST': env('POSTGRES_HOST_MASTER'),
+        'PORT': env('POSTGRES_PORT_MASTER'),
     },
+    'slave_replica': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('POSTGRES_DB'),
+        'USER': env('POSTGRES_USER'),
+        'PASSWORD': env('POSTGRES_PASSWORD'),
+        'HOST': env('POSTGRES_HOST_SLAVE'),
+        'PORT': env('POSTGRES_PORT_SLAVE'),
+        'TEST': {
+            'MIRROR': 'default',
+        },
+    }
 }
 
+# Database Routers for Read-Write Splitting
+DATABASE_ROUTERS = ['skyeye.db_routers.ReadWriteRouter']
+
+# Cache configuration using environment variables
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env('REDIS_URL'),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Trading Redis configuration using environment variables
 TRADING_REDIS = {
-    "host": "127.0.0.1",
-    "port": 6379,
-    "db": 2,
-    "password": "",
+    "host": env('REDIS_TRADING_HOST'),
+    "port": env('REDIS_TRADING_PORT'),
+    "db": env('REDIS_TRADING_DB'),
+    "password": env('REDIS_TRADING_PASSWORD'),
     "socket_connect_timeout": 10,
 }
 
+# Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -82,16 +179,14 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            # 'level':'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
-            # 'stream': sys.stdout,
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'level': env('DJANGO_LOG_LEVEL'),
             'propagate': True
         },
     },
@@ -102,7 +197,6 @@ LOGGING = {
 }
 
 # Password validation
-# https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -119,60 +213,41 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-# https://docs.djangoproject.com/en/2.2/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = env('LANGUAGE_CODE')
+TIME_ZONE = 'UTC'  # 固定为UTC，确保数据存储一致性（定时任务时区通过CELERY_TIMEZONE单独配置）
 USE_I18N = True
-
 USE_L10N = True
-
-USE_TZ = True
+USE_TZ = True  # 开启后，django.utils.timezone.now()得到的是UTC时间，数据库存储也是UTC
 
 STATIC_URL = '/static/'
-QUOTE_ORDERBOOK_LIMIT = 15
-QUOTE_ORDERBOOK_SMALL_LIMIT = 5
-QUOTE_OB_USDTUSDS_LIMIT = 5
 
-MERGE_SYMBOL_CONFIG = {
-    "BTC/USDS": {'bitmex': 'BTC/USD', 'okx': 'BTC-USD-SWAP', 'huobi': 'BTC-USD'},
-    "ETH/USDS": {'okx': 'ETH-USD-SWAP', 'huobi': 'ETH-USD'},
-    "USDT/USDS": {},
+# External API Configurations (using env defaults)
+COINMARKETCAP_API_KEY = env('COINMARKETCAP_API_KEY')
+COINMARKETCAP_BASE_URL = env('COINMARKETCAP_BASE_URL')
+FRANKFURTER_API_URL = env('FRANKFURTER_API_URL')
+DEFAULT_USD_CNY_RATE = env('DEFAULT_USD_CNY_RATE')
 
-    "BTC/USDT": {'binance': 'BTC/USDT', 'huobi': 'BTC/USDT', 'okx': 'BTC/USDT', 'bybit': 'BTC/USDT', 'bitget': 'BTC/USDT', 'bitmex': 'BTC/USDT'},
-    "EOS/USDT": {'binance': 'EOS/USDT', 'huobi': 'EOS/USDT', 'okx': 'EOS/USDT', 'bybit': 'EOS/USDT', 'bitget': 'EOS/USDT', 'bitmex': 'EOS/USDT'},
-    "ETH/USDT": {'binance': 'ETH/USDT', 'huobi': 'ETH/USDT', 'okx': 'ETH/USDT', 'bybit': 'ETH/USDT', 'bitget': 'ETH/USDT', 'bitmex': 'ETH/USDT'},
-    "LTC/USDT": {'binance': 'LTC/USDT', 'huobi': 'LTC/USDT', 'okx': 'LTC/USDT', 'bybit': 'LTC/USDT', 'bitget': 'LTC/USDT', 'bitmex': 'LTC/USDT'},
+# Business Logic Settings
+GRPC_MAX_MESSAGE_LENGTH = env('GRPC_MAX_MESSAGE_LENGTH')
 
-    "EOS/BTC": {'binance': 'EOS/BTC', 'huobi': 'EOS/BTC', 'okx': 'EOS/BTC', 'bybit': 'EOS/BTC', 'bitget': 'EOS/BTC', 'bitmex': 'EOS/BTC'},
-    "ETH/BTC": {'binance': 'ETH/BTC', 'huobi': 'ETH/BTC', 'okx': 'ETH/BTC', 'bybit': 'ETH/BTC', 'bitget': 'ETH/BTC', 'bitmex': 'ETH/BTC'},
-    "LTC/BTC": {'binance': 'LTC/BTC', 'huobi': 'LTC/BTC', 'okx': 'LTC/BTC', 'bybit': 'LTC/BTC', 'bitget': 'LTC/BTC', 'bitmex': 'LTC/BTC'},
-
-    "CRV/USDT": {'binance': 'CRV/USDT', 'huobi': 'CRV/USDT', 'okx': 'CRV/USDT'},
-    "SUSHI/USDT": {'binance': 'SUSHI/USDT', 'huobi': 'SUSHI/USDT', 'okx': 'SUSHI/USDT'},
-    "UNI/USDT": {'binance': 'UNI/USDT', 'huobi': 'UNI/USDT', 'okx': 'UNI/USDT'},
-    "SOL/USDT": {'binance': 'SOL/USDT', 'huobi': 'SOL/USDT', 'okx': 'SOL/USDT', 'bybit': 'SOL/USDT', 'bitget': 'SOL/USDT', 'bitmex': 'SOL/USDT'},
-}
-
-FETCHABLE_EXCHANGES = ["bitmex", "huobi", "binance", "okx", "bybit", "bitget"]
-CRAWLER_SLEEP_CONFIG = {}
-C_PROXIES = []
-GRPC_MAX_MESSAGE_LENGTH = 2048
-
-# External API Configurations
-FRANKFURTER_API_URL = "https://api.frankfurter.app/latest?from=USD&to=CNY"
-DEFAULT_USD_CNY_RATE = '7.29'  # Default fallback rate as string
-
-# Quote assets considered stable enough to represent USD price in OTC calculations
+# Business Constants
 ACCEPTABLE_QUOTE_ASSETS_FOR_OTC = ['USDT', 'USDC']
 
+# Celery Configuration (只保留Django需要的设置，其他在celery.py中配置)
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# CMC Redis URL (用于应用程序访问)
+REDIS_CMC_URL = env('REDIS_CMC_URL')
+
+# Django Settings
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Import local settings for development overrides (if they exist)
+# Note: local_settings should now only contain development-specific overrides
+# All sensitive configuration should be in environment variables
 try:
     from .local_settings import *
 except ImportError:
     pass
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/stable/ref/settings/#default-auto-field
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

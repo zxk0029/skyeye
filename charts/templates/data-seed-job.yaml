@@ -1,0 +1,86 @@
+{{- if .Values.dataSeed.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "app.fullname" . }}-data-seed
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: data-seed
+  annotations:
+    # 确保每次部署都重新执行
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ include "app.fullname" . }}-data-seed
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: data-seed
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: data-seed
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        {{- range $key, $value := .Values.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- if .Values.dataSeed.configMapName }}
+        - name: SEED_DATA_FILE
+          value: "/seed-data/{{ .Values.dataSeed.fileName }}"
+        {{- end }}
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "🔍 数据种子导入任务启动"
+          
+          # 等待数据库就绪
+          echo "⏳ 等待数据库就绪..."
+          timeout 300 bash -c 'until pg_isready -h $POSTGRES_HOST_MASTER -p $POSTGRES_PORT_MASTER -U $POSTGRES_USER; do sleep 2; done'
+          
+          # 检查是否已有数据
+          ASSET_COUNT=$(python manage.py shell -c "from apps.cmc_proxy.models import CmcAsset; print(CmcAsset.objects.count())" | tail -1)
+          echo "当前资产数量: $ASSET_COUNT"
+          
+          if [ "$ASSET_COUNT" -lt {{ .Values.dataSeed.minAssetCount | default 1000 }} ]; then
+            if [ -n "$SEED_DATA_FILE" ] && [ -f "$SEED_DATA_FILE" ]; then
+              echo "📥 导入种子数据文件: $SEED_DATA_FILE"
+              psql -h $POSTGRES_HOST_MASTER -p $POSTGRES_PORT_MASTER -U $POSTGRES_USER -d $POSTGRES_DB < "$SEED_DATA_FILE"
+              echo "✅ 种子数据导入完成"
+            else
+              echo "⚠️ 未找到种子数据文件，跳过导入"
+              echo "💡 建议: 先在本地运行 ./scripts/prepare_production_data.sh 准备种子数据"
+            fi
+          else
+            echo "✅ 数据充足，跳过种子数据导入"
+          fi
+          
+          # 验证数据
+          echo "📊 验证导入结果..."
+          python manage.py shell -c "
+          from apps.cmc_proxy.models import CmcAsset, CmcMarketData, CmcKline
+          print(f'✅ CmcAsset: {CmcAsset.objects.count():,} 条')
+          print(f'✅ CmcMarketData: {CmcMarketData.objects.count():,} 条')
+          print(f'✅ CmcKline: {CmcKline.objects.count():,} 条')
+          "
+          
+          echo "🎉 数据种子任务完成"
+        {{- if .Values.dataSeed.configMapName }}
+        volumeMounts:
+        - name: seed-data
+          mountPath: /seed-data
+          readOnly: true
+        {{- end }}
+      {{- if .Values.dataSeed.configMapName }}
+      volumes:
+      - name: seed-data
+        configMap:
+          name: {{ .Values.dataSeed.configMapName }}
+      {{- end }}
+  backoffLimit: 3
+{{- end }}

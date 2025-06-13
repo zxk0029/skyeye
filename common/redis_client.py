@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 import json
 import time
-from typing import Optional
+from typing import Optional, Dict, Any, List, Tuple, Union
 
+import redis.asyncio as aioredis
 from django.conf import settings
 from django.core.cache import cache as django_redis
 from redis import ConnectionPool, StrictRedis
+from redis.asyncio import Redis as AsyncRedis
 
 from common.helpers import getLogger
 from . import constants
@@ -143,3 +145,7 @@ class GlobalRedisWrapper:
 
 def global_redis():
     return GlobalRedisWrapper
+
+
+def get_async_redis_client(redis_url: str):
+    return aioredis.from_url(redis_url, decode_responses=True)

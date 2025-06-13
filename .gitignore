@@ -5,3 +5,8 @@
 .vscode
 .cursor
 docs
+.DS_Store
+logs
+.claude
+.plans
+CLAUDE*.md

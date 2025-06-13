@@ -72,16 +72,16 @@ class AssetNotFound(NotFound):
     message = "Asset with ID %(asset_id)s not found"
 
 
-class AssetNameNotFound(NotFound):
-    message = "Asset with Name %(asset_name)s not found"
+class AssetSymbolNotFound(NotFound):
+    message = "Asset with Symbol %(asset_symbol)s not found"
 
 
-class SymbolNotFound(NotFound):
-    message = "Symbol with ID %(symbol_id)s not found"
+class TradingPairNotFound(NotFound):
+    message = "TradingPair with ID %(trading_pair_id)s not found"
 
 
-class SymbolNameNotFound(NotFound):
-    message = "Symbol with Name %(symbol_name)s not found"
+class TradingPairSymbolDisplayNotFound(NotFound):
+    message = "TradingPair with symbol_display '%(symbol_display)s' not found"
 
 
 class ExchangeNotFound(NotFound):
@@ -96,12 +96,12 @@ class AccountNameAlreadyExists(Conflict):
     message = "Account with Name %(account_name)s already exists"
 
 
-class AssetNameAlreadyExists(Conflict):
-    message = "Asset with Name %(asset_name)s already exists"
+class AssetSymbolAlreadyExists(Conflict):
+    message = "Asset with Symbol %(asset_symbol)s already exists"
 
 
-class SymbolNameAlreadyExists(Conflict):
-    message = "Symbol with Name %(symbol_name)s already exists"
+class TradingPairSymbolDisplayAlreadyExists(Conflict):
+    message = "TradingPair with symbol_display '%(symbol_display)s' already exists"
 
 
 class ExchangeNameAlreadyExists(Conflict):

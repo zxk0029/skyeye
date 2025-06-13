@@ -1,0 +1,266 @@
+import asyncio
+
+from celery import shared_task
+from django.conf import settings
+from django.core.management import call_command
+from django_celery_beat.models import PeriodicTask
+
+from apps.cmc_proxy import consts
+from apps.cmc_proxy.models import CmcKline
+from apps.cmc_proxy.services import CoinMarketCapClient, get_cmc_service
+from apps.cmc_proxy.utils import CMCRedisClient
+from apps.cmc_proxy.utils import acquire_lock, release_lock
+from common.helpers import getLogger
+
+logger = getLogger(__name__)
+
+
+# 异步函数，不直接用作Celery任务
+async def _process_pending_cmc_batch_requests():
+    """处理待处理的CoinMarketCap批量请求 (异步函数)"""
+    logger.info("Starting to process pending CMC batch requests")
+
+    cmc_redis = None
+    lock_acquired = False
+
+    try:
+        cmc_redis = await CMCRedisClient.create(settings.REDIS_CMC_URL)
+
+        # 尝试获取锁
+        lock_acquired = await acquire_lock(cmc_redis, consts.CMC_BATCH_PROCESSING_LOCK_KEY, timeout=30)
+        if not lock_acquired:
+            logger.warning("Failed to acquire lock for batch processing, another process might be running")
+            return
+
+        # 从Redis列表中获取待处理请求
+        batch_size = consts.CMC_N2_BATCH_TARGET_SIZE
+        pending_ids = []
+
+        # 使用 LPOP 获取多个元素（Redis 6.2+）
+        try:
+            pending_ids_bytes = await cmc_redis.lpop(consts.CMC_BATCH_REQUESTS_PENDING_KEY, batch_size)
+            if pending_ids_bytes:
+                # 如果返回的是单个元素而不是列表，将其包装为列表
+                if not isinstance(pending_ids_bytes, list):
+                    pending_ids = [pending_ids_bytes]
+                else:
+                    pending_ids = pending_ids_bytes
+        except Exception as e:
+            logger.error(f"Error getting pending requests from Redis list: {e}", exc_info=True)
+            # 如果上面的方法失败，尝试使用LRANGE和LTRIM组合来模拟批量LPOP
+            pending_ids_bytes = await cmc_redis.lrange(consts.CMC_BATCH_REQUESTS_PENDING_KEY, 0, batch_size - 1)
+            if pending_ids_bytes:
+                pending_ids = [id_bytes for id_bytes in pending_ids_bytes]
+                # 删除已获取的元素
+                await cmc_redis.ltrim(consts.CMC_BATCH_REQUESTS_PENDING_KEY, len(pending_ids), -1)
+
+        # 去重
+        unique_ids = list(set(pending_ids))
+        logger.info(f"Got {len(unique_ids)} unique IDs from pending requests")
+
+        # 如果实际取出的ID数量少于目标批次大小，从补充池获取补充
+        if len(unique_ids) < batch_size:
+            supplement_count = batch_size - len(unique_ids)
+            supplement_ids = await cmc_redis.get_from_supplement_pool(supplement_count)
+
+            # 确保不重复
+            supplement_ids = [_id for _id in supplement_ids if _id not in unique_ids]
+            unique_ids.extend(supplement_ids)
+
+            logger.info(f"Added {len(supplement_ids)} IDs from supplement pool")
+
+        if not unique_ids:
+            logger.info("No IDs to process in this batch")
+            return
+
+        client = CoinMarketCapClient()
+        try:
+            response_data = await client.get_quotes_latest(ids=unique_ids)
+            quotes_data = response_data.get('data', {})
+
+            for cmc_id_str, token_data in quotes_data.items():
+                cmc_id = token_data.get('id')
+                if not cmc_id:
+                    logger.warning(f"Token data missing id for key {cmc_id_str}")
+                    continue
+
+                symbol = token_data.get('symbol')
+                if not symbol:
+                    logger.warning(f"Token data missing symbol for id: {cmc_id}")
+                    continue
+
+                await cmc_redis.cache_token_quote_data(str(cmc_id), token_data, consts.CMC_TTL_WARM_COLD)
+
+            logger.info(f"Successfully processed {len(quotes_data)} tokens in this batch")
+
+        except Exception as e:
+            logger.error(f"Error fetching quotes from CMC API: {e}", exc_info=True)
+
+    except Exception as e:
+        logger.error(f"Critical error during batch processing: {e}", exc_info=True)
+    finally:
+        if lock_acquired and cmc_redis:
+            await release_lock(cmc_redis, consts.CMC_BATCH_PROCESSING_LOCK_KEY)
+        if cmc_redis:
+            await cmc_redis.aclose()
+
+
+async def _daily_full_data_sync():
+    """每日全量同步 CoinMarketCap 数据 (异步函数)"""
+
+    logger.info("Starting daily full sync of CoinMarketCap data")
+
+    # 暂停批量请求任务以避免冲突
+    batch_task = None
+    try:
+        batch_task = await PeriodicTask.objects.aget(name='process_pending_cmc_batch_requests')
+        if batch_task.enabled:
+            batch_task.enabled = False
+            await batch_task.asave()
+            logger.info("Temporarily disabled batch request task during full sync")
+    except PeriodicTask.DoesNotExist:
+        logger.warning("Batch request task not found, continuing without disabling")
+
+    cmc_redis = None
+    client = CoinMarketCapClient()
+    try:
+        cmc_redis = await CMCRedisClient.create(settings.REDIS_CMC_URL)
+        page_size = 5000
+        start = 1
+        all_tokens_data = []
+
+        while True:
+            try:
+                response_data = await client.get_listings_latest(start=start, limit=page_size)
+                tokens_page = response_data.get('data', [])
+
+                if not tokens_page:
+                    break
+
+                all_tokens_data.extend(tokens_page)
+                logger.info(f"Fetched {len(tokens_page)} tokens, total so far: {len(all_tokens_data)}")
+
+                for token_item in tokens_page:
+                    cmc_id = token_item.get('id')
+                    symbol = token_item.get('symbol')
+                    if not cmc_id or not symbol:
+                        logger.warning(f"Token item missing id or symbol: {token_item.get('slug')}")
+                        continue
+
+                    await cmc_redis.cache_token_quote_data(str(cmc_id), token_item, consts.CMC_TTL_BASE)
+
+                if len(tokens_page) < page_size:
+                    break
+
+                start += page_size
+                await asyncio.sleep(1)
+
+            except Exception as e:
+                logger.error(f"Error fetching a page during daily sync: {e}", exc_info=True)
+                break
+
+        if all_tokens_data:
+            # 按市值排序（降序）
+            def get_market_cap(token_dict):
+                try:
+                    return float(token_dict.get('quote', {}).get('USD', {}).get('market_cap', 0) or 0)
+                except (ValueError, TypeError):
+                    return 0.0
+
+            all_tokens_data.sort(key=get_market_cap, reverse=True)
+
+            n1 = consts.CMC_N1
+            n3_range = consts.CMC_N3_SUPPLEMENT_POOL_RANGE
+            supplement_tokens_data = all_tokens_data[n1: n1 + n3_range]
+
+            if supplement_tokens_data:
+                await cmc_redis.update_supplement_pool(supplement_tokens_data)
+                logger.info(f"Updated supplement pool with {len(supplement_tokens_data)} tokens")
+
+        logger.info(f"Daily full sync completed, processed {len(all_tokens_data)} tokens")
+        return len(all_tokens_data)
+    except Exception as e:
+        logger.error(f"Critical error during daily_full_data_sync task: {e}", exc_info=True)
+        return 0
+    finally:
+        # 重新启用批量请求任务
+        if batch_task and not batch_task.enabled:
+            try:
+                batch_task.enabled = True
+                await batch_task.asave()
+                logger.info("Re-enabled batch request task after full sync")
+            except Exception as e:
+                logger.error(f"Failed to re-enable batch request task: {e}", exc_info=True)
+
+        if cmc_redis:
+            await cmc_redis.aclose()
+
+
+# 普通函数，用作Celery任务的包装器
+@shared_task
+def process_pending_cmc_batch_requests():
+    """处理待处理的CoinMarketCap批量请求 (Celery任务)"""
+    loop = None
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_process_pending_cmc_batch_requests())
+    finally:
+        if loop:
+            if not loop.is_closed():
+                loop.close()
+
+
+@shared_task
+def daily_full_data_sync():
+    """每日全量同步 CoinMarketCap 数据 (Celery任务)"""
+    loop = None
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_daily_full_data_sync())
+    finally:
+        if loop:
+            if not loop.is_closed():
+                loop.close()
+
+
+async def _process_cmc_klines(count: int, only_missing: bool):
+    """公共 CMC K 线处理异步函数"""
+    mode = "initialization" if only_missing else "incremental update"
+    logger.info(f"Starting CMC klines {mode} task")
+    try:
+        cmc_service = await get_cmc_service()
+        # 如果是增量模式且尚未初始化任何 K 线，则首 run 自动初始化 24 小时历史数据
+        if not only_missing:
+            total = await CmcKline.objects.acount()
+            if total == 0:
+                logger.info("第一次运行，自动初始化 K 线历史数据")
+                await cmc_service.process_klines(count=24, only_missing=True)
+        # 执行请求的模式更新或初始化
+        result = await cmc_service.process_klines(count=count, only_missing=only_missing)
+        logger.info(f"CMC klines {mode} completed. Success: {result['success']}, Failed: {result['failed']}, Total klines: {result['total_klines']}")
+        return result['total_klines']
+    except Exception as e:
+        logger.error(f"Critical error during klines {mode} task: {e}", exc_info=True)
+        return 0
+
+
+@shared_task
+def update_cmc_klines():
+    """更新CMC K线数据 (Celery任务) - 增量更新"""
+    loop = None
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_process_cmc_klines(count=1, only_missing=False))
+    finally:
+        if loop:
+            if not loop.is_closed():
+                loop.close()
+
+
+@shared_task
+def sync_cmc_data_task():
+    """同步CMC数据到数据库 (Celery任务)"""
+    call_command('sync_cmc_data', '--run-once')
