@@ -131,6 +131,9 @@ curl "http://localhost:8000/api/v1/cmc/market-data?cmc_id=1"
 
 # 检查Redis数据
 redis-cli -h localhost -p 6379 -n 1 KEYS "cmc:quote_data:*" | wc -l
+redis-cli -h localhost -p 6379 -n 1 FLUSHDB
+# 清空所有数据库
+redis-cli -h localhost -p 6379 FLUSHALL
 
 # 完全重启系统
 ./scripts/local/manage_celery.sh stop
