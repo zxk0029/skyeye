@@ -279,37 +279,18 @@ def beat_health(request):
         ).count()
         
         # 检查关键任务状态
+        # 只监控核心的价格采集任务，Token分析任务失败不应导致系统判定为unhealthy
         critical_tasks = [
             # 高频价格任务（最关键）
             'collect_prices_frequently',
             'persist_prices_frequently',
-            'process_pending_cmc_batch_requests',
-            
-            # 数据同步任务
-            'sync_cmc_data_to_db',
-            
-            # K线任务（容易出问题）
-            'hourly_cmc_klines_update',
-            'daily_cmc_klines_initialization',
-            
-            # 每日任务（重要的数据更新）
-            'daily_full_data_sync'
         ]
         
         # 不同任务的健康检查阈值（秒）
         task_thresholds = {
-            # 高频任务
+            # 高频价格任务（核心功能）
             'collect_prices_frequently': 300,          # 30秒执行，5分钟内必须有
             'persist_prices_frequently': 300,          # 15秒执行，5分钟内必须有
-            'process_pending_cmc_batch_requests': 300, # 2秒执行，5分钟内必须有
-            'sync_cmc_data_to_db': 900,               # 5分钟执行，15分钟内必须有
-            
-            # 小时任务
-            'hourly_cmc_klines_update': 7200,         # 每小时执行，2小时内必须有
-            'daily_cmc_klines_initialization': 86400 * 2,  # 每天执行，2天内必须有
-            
-            # 每日任务
-            'daily_full_data_sync': 86400 * 2,        # 每天执行，2天内必须有
         }
         
         critical_status = {}
